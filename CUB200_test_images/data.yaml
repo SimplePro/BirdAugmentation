@@ -1,0 +1,10 @@
+names:
+- Crow
+- Cuckoo
+- Sparraow
+- Swallow
+- Woodpecker
+nc: 5
+
+train: /content/BirdAugmentation/dataset/train.txt
+val: /content/BirdAugmentation/CUB200_test_images/test.txt
