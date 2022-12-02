@@ -17,6 +17,7 @@ from config import class_imgid_list, class_name_list, imgid_filename_dict, backg
 import albumentations as A
 
 
+# albumentation_augmentation 함수에서 쓰이는 A.Compose 변수
 albumentation_transform = A.Compose([
     A.SafeRotate(p=0.5),
     A.HorizontalFlip(p=0.5),
@@ -27,13 +28,25 @@ albumentation_transform = A.Compose([
 ], bbox_params=A.BboxParams(format="coco", label_fields=["class_labels"]))
 
 
-def albumentation_augmentation(img, segmentation, bbox):
+# 조류 이미지를 자르기 전에 augmentation을 하는 함수.
+def albumentation_augmentation(
+        img,
+        segmentation,
+        bbox
+    ):
+
     augmentation_result = albuemtnation_transform(img=img, mask=segmentation, bboxes=[bbox])
 
     return augmentation_result["image"], augmentation_result["mask"], augmentation_result["bboxes"][0]
 
-# 이미지를 Bounding Box만큼 자르는 함수.
-def crop_img(bird_img, segmentation, bounding_box: tuple):
+
+# 조류 이미지를 Bounding Box만큼 자르는 함수.
+def crop_img(
+        bird_img,
+        segmentation,
+        bounding_box: tuple
+    ):
+
     # (xmin, ymin, w, h)를 (xmin, ymin, xmax, ymax)로 바꾸는 과정
     xmin, ymin, w, h = map(int, bounding_box)
     xmax, ymax = xmin+w, ymin+h
@@ -46,8 +59,6 @@ def crop_img(bird_img, segmentation, bounding_box: tuple):
 def random_resize(
         bird_img,
         segmentation,
-        # min_size=16,
-        # max_size=128,
         min_scale_factor=0.25,
         max_scale_factor=1.75,
         max_size=256,
@@ -73,17 +84,12 @@ def random_resize(
     return resized_bird_img, resized_segmentation # resize한 이미지 반환.
 
 
-# 랜덤하게 배경을 반환하는 함수.
-def get_random_background(backgrounds):
-    # 배경 이미지의 개수를 이용하여 랜덤한 index 추출.
-    random_idx = randint(0, backgrounds.size(0)-1)
-
-    # 랜덤한 배경 반환.
-    return backgrounds[random_idx]
-
-
 # 조류를 삽입할 랜덤한 위치를 반환하는 함수.
-def get_random_position(yx_p, bird_img, segmentation, background_img):
+def get_random_position(
+        bird_img,
+        segmentation,
+        background_img
+    ):
 
     _, bird_H, bird_W = bird_img.shape # 조류 이미지의 세로 길이, 가로 길이
     _, background_H, background_W = background_img.shape # 배경 이미지의 세로 길이, 가로 길이
@@ -117,23 +123,20 @@ def paste_img(bird_img, segmentation, background_img, position):
     return pasted_img
 
 
+# 조류 이미지를 증강하는 클래스
 class BirdAugmentation:
 
     def __init__(
         self,
-        min_scale_factor=0.25,
-        max_scale_factor=1.75,
-        max_size=256,
-        # min_size,
-        # max_size,
-        resize_mode="bilinear",
-        birds_n: list = [0, 1, 2],
-        birds_n_p: list = [0.01, 0.65, 0.34],
-        ioa_threshold: float = 0.5
+        min_scale_factor=0.25, # 조류 이미지를 resize할 때 사용할 변수
+        max_scale_factor=1.75, # 조류 이미지를 resize할 때 사용할 변수
+        max_size=256, # 조류 이미지를 resize할 때 사용할 변수
+        resize_mode="bilinear", # 조류 이미지를 resize할 때 사용할 변수
+        birds_n: list = [0, 1, 2], # 한 이미지에 들어갈 수 있는 조류의 마릿수 리스트
+        birds_n_p: list = [0.01, 0.65, 0.34], # 위 변수에 각각 대응되는 확률 리스트
+        ioa_threshold: float = 0.5 # 조류 이미지를 얼마나 겹치게 하는 것을 허용할지 결정하는 변수.
     ):
 
-        # self.min_size = min_size # resize에 사용될 min_size
-        # self.max_size = max_size # resize에 사용될 max_size
         self.min_scale_factor = min_scale_factor
         self.max_scale_factor = max_scale_factor
         self.max_size = max_size
@@ -158,12 +161,11 @@ class BirdAugmentation:
         save_file_path: str,
         is_train: bool,
     ):
+
         random_background = background_imgs[randint(0, len(background_imgs)-1)]
         [random_birds_n] = choices(self.birds_n, weights=self.birds_n_p, k=1)
 
         bounding_boxes = []
-
-        yx_p = np.ones((random_background.size(1), random_background.size(2))) / float(random_background.size(1) * random_background.size(2))
 
         pasted_img = random_background.clone()
 
@@ -189,16 +191,13 @@ class BirdAugmentation:
             resized_bird, resized_segmentation = random_resize(
                 bird_img=croped_bird_img,
                 segmentation=croped_segmentation,
-                # min_size=self.min_size,
-                # max_size=self.max_size,
                 min_scale_factor=self.min_scale_factor,
                 max_scale_factor=self.max_scale_factor,
                 max_size=self.max_size,
                 mode=self.resize_mode
             )
-
-            # new_yx_p, random_position = get_random_position(yx_p, resized_bird, resized_segmentation, random_background)
-            random_position = get_random_position(yx_p, resized_bird, resized_segmentation, random_background)
+            
+            random_position = get_random_position(resized_bird, resized_segmentation, random_background)
 
             its_ok = True
 
@@ -299,8 +298,6 @@ if __name__ == '__main__':
     min_scale_factor = 0.125
     max_scale_factor = 1.75
     max_size = 256
-    # min_size =  # resize에 사용할 min_size
-    # max_size = 192 # resize에 사용할 max_size
     resize_mode = "bilinear" # resize에 사용할 resize_mode
 
     background_img_size = (256, 256) # 배경 이미지의 크기 (HxW)
@@ -375,8 +372,6 @@ if __name__ == '__main__':
     testset_size = 4000
 
     bird_augmentation = BirdAugmentation(
-        # min_size=min_size,
-        # max_size=max_size,
         min_scale_factor=min_scale_factor,
         max_scale_factor=max_scale_factor,
         max_size=max_size,
