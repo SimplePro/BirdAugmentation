@@ -17,17 +17,6 @@ from config import class_imgid_list, class_name_list, imgid_filename_dict, backg
 import albumentations as A
 
 
-# albumentation_augmentation 함수에서 쓰이는 A.Compose 변수
-albumentation_transform = A.Compose([
-    A.SafeRotate(p=0.5),
-    A.HorizontalFlip(p=0.5),
-    A.VerticalFlip(p=0.5),
-    A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.8),
-    A.AdvancedBlur(p=0.3),
-    A.RandomFog(p=0.3),
-], bbox_params=A.BboxParams(format="coco", label_fields=["class_labels"]))
-
-
 # 조류 이미지를 자르기 전에 augmentation을 하는 함수.
 def albumentation_augmentation(
         img,
@@ -35,7 +24,17 @@ def albumentation_augmentation(
         bbox
     ):
 
-    augmentation_result = albuemtnation_transform(img=img, mask=segmentation, bboxes=[bbox])
+    augmentation_result = A.Compose(
+        [
+            A.SafeRotate(p=0.5),
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.8),
+            A.AdvancedBlur(p=0.3),
+            A.RandomFog(p=0.3),
+        ],
+        bbox_params=A.BboxParams(format="coco", label_fields=["class_labels"])
+    )(img=img, mask=segmentation, bboxes=[bbox])
 
     return augmentation_result["image"], augmentation_result["mask"], augmentation_result["bboxes"][0]
 
