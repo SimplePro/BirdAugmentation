@@ -10,7 +10,7 @@ from PIL import Image
 
 from torchvision import transforms
 
-from random import shuffle
+from random import choices, shuffle
 
 import albumentations as A
 
@@ -28,20 +28,22 @@ if __name__ == '__main__':
 
 
     # 사용할 클래스 리스트
-    class_list = [29, 30, 107, 108, 31, 33, 113, 123, 127, 129, 130, 136, 137, 138, 188, 189, 190, 191, 192]
+    # class_list = [29, 30, 107, 108, 31, 33, 113, 123, 127, 129, 130, 136, 137, 138, 188, 189, 190, 191, 192]
+    class_list = list(range(200))
 
-    augmentation_n = 5
+    augmentation_n = 2
 
     dataset_list = []
+    is_train_list = []
 
     albumentation_transform = A.Compose([
         A.SafeRotate(p=0.3),
         A.CropAndPad(percent=(-0.2,0.4), p=1),
         A.HorizontalFlip(p=0.5),
         A.VerticalFlip(p=0.5),
-        A.RandomBrightnessContrast(brightness_limit=0.1, contrast_limit=0.1, p=0.8),
-        A.AdvancedBlur(p=0.2),
-        A.RandomFog(p=0.2),
+        A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.8),
+        A.AdvancedBlur(p=0.3),
+        A.RandomFog(p=0.3),
         A.Resize(height=256,width=256,p=1)
     ])
 
@@ -51,6 +53,9 @@ if __name__ == '__main__':
         classname = class_name_list[c]
 
         for imgid in class_imgid_list[c]:
+
+            [is_train] = choices([0, 1], weights=[1-train_ratio, train_ratio], k=1)
+
             filename = imgid_filename_dict[imgid]
 
             bird_path = os.path.join(bird_img_dir, classname, filename)
@@ -74,13 +79,12 @@ if __name__ == '__main__':
                     )
                 )
 
+                is_train_list.append(is_train)
 
-    is_train = [1 if i < (len(dataset_list) * train_ratio) else 0 for i in range(len(dataset_list))]
-    shuffle(is_train)
 
     for i, (bird_img, mask_img) in tqdm(enumerate(dataset_list)):
-        save_bird_img_path = os.path.join(save_bird_img_dir, "train" if is_train[i] else "valid", f"{i}.jpg")
-        save_mask_img_path = os.path.join(save_mask_img_dir, "train" if is_train[i] else "valid", f"{i}.jpg")
+        save_bird_img_path = os.path.join(save_bird_img_dir, "train" if is_train_list[i] else "valid", f"{i}.jpg")
+        save_mask_img_path = os.path.join(save_mask_img_dir, "train" if is_train_list[i] else "valid", f"{i}.jpg")
 
         transforms.ToPILImage()(bird_img).save(save_bird_img_path)
         transforms.ToPILImage()(mask_img).save(save_mask_img_path)
